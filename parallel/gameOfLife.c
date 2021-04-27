@@ -128,10 +128,9 @@ int main(int argc, char *argv[]) {
         // Still kept the signature to return the number of requests made nonetheless.
         //int nRequests = broadcastState(currStatePtr, currStatePtr+ lastRowIndex, currProcess, nProcesses, requests);
         broadcastCurrState(curr, NROWS, NCOLS, currProcess, nProcesses, requests);
-        receiveStates(parallelStateTop, parallelStateBottom, NCOLS, currProcess, nProcesses);
+        recvCurrState(parallelStateTop, parallelStateBottom, NCOLS, currProcess, nProcesses);
 
         totalAlive = 0;
-
         for (int cell = 0; cell < localBufferSize; cell++) {
             nAlive = 0;
             getNeighbors(cell, nRowsLocal, NCOLS, neighbors);
