@@ -36,3 +36,39 @@ void initializeState(int** localState, int nRows, int nCols, int currProcess, in
         receiveInitialState(*localState, nRows, nCols);
     }
 }
+
+int getParallelRankTop(int currRank, int nProcesses) {
+    int paraRankTop = currRank ? currRank - 1 : nProcesses - 1;
+    return paraRankTop;
+}
+
+int getParallelRankBot(int currRank , int nProcesses) {
+    int paraRankBot = currRank == nProcesses - 1 ? 0 : currRank + 1;
+    return paraRankBot;
+};
+
+int broadcastCurrState(int **currState, int nRows, int nCols, int currRank, int nProcesses, MPI_Request *requests)
+{
+    int rankIndexTop = getParallelRankTop(currRank, nProcesses);
+    int rankIndexBot = getParallelRankBot(currRank, nProcesses);
+
+    MPI_Request *requestPtr = requests;
+    MPI_Isend(currState[0], nCols, MPI_INT, rankIndexTop, RECVBOTROW, MPI_COMM_WORLD, requestPtr++);
+    MPI_Isend(currState[nRows - 1], nCols, MPI_INT, rankIndexBot, RECVTOPROW, MPI_COMM_WORLD, requestPtr++);
+    
+    int nRequests = requestPtr - requests;
+    return nRequests;
+}
+
+int receiveStates(int *parallelTopRow, int *parallelBottomRow, int nCols, int currRank, int nProcesses) 
+{
+    MPI_Status status;
+    
+    int rankIndexTop = getParallelRankTop(currRank, nProcesses);
+    int rankIndexBot = getParallelRankBot(currRank, nProcesses);
+
+    MPI_Recv(parallelTopRow, nCols, MPI_INT, rankIndexTop, RECVTOPROW, MPI_COMM_WORLD, &status);
+    MPI_Recv(parallelBottomRow, nCols, MPI_INT, rankIndexBot, RECVBOTROW, MPI_COMM_WORLD, &status);   
+
+    return 0;
+}

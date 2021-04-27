@@ -30,37 +30,9 @@ int getCellIndex(int row, int col, int nCols) {
 // Shares the current state information with relevant processes. A given process has to share information with its
 // "top" process: rank-1 and "bottom" process: rank+1.
 // Implements wrapping such that negative ranks refer to the max rank, and overflowing ranks are "recounted" from rank 0 
-int broadcastState(int **currState, int currProcess, int nProcesses, MPI_Request *requests)
-{
-    int parallelProcessTop = currProcess ? currProcess-1 : nProcesses-1;
-    int parallelProcessBottom = currProcess == nProcesses-1 ? 0 : currProcess + 1;
-    int receivingTopRow = 0;
-    int receivingBottomRow = 1;
-    
-    MPI_Request *requestPtr = requests;
-    MPI_Isend(localTopRow, NCOLS, MPI_INT, parallelProcessTop, receivingBottomRow, MPI_COMM_WORLD, requestPtr++);
-    MPI_Isend(localBottomRow, NCOLS, MPI_INT, parallelProcessBottom, receivingTopRow, MPI_COMM_WORLD, requestPtr++);
-    
-    int nRequests = requestPtr - requests;
-    return nRequests;
-}
 
 // Receives relevant State information from parallel processes. Mutates parallelTopRow and parallelBottomRow to hold
 // information about the top and bottom rows of "ghost cells".
-int receiveStates(int *parallelTopRow, int *parallelBottomRow, int currProcess, int nProcesses) 
-{
-    MPI_Status status;
-    
-    int parallelProcessTop = currProcess ? currProcess-1 : nProcesses-1;
-    int parallelProcessBottom = currProcess == nProcesses-1 ? 0 : currProcess + 1;
-    int receivingTopRow = 0;
-    int receivingBottomRow = 1;
-
-    MPI_Recv(parallelTopRow, NCOLS, MPI_INT, parallelProcessTop, receivingTopRow, MPI_COMM_WORLD, &status);
-    MPI_Recv(parallelBottomRow, NCOLS, MPI_INT, parallelProcessBottom, receivingBottomRow, MPI_COMM_WORLD, &status);   
-
-    return 0;
-}
 
 // Shares the number of cells that are currently alive in a local state, with the root process. 
 int shareNAlive(int nAlive, int currProcess, int nProcesses) {
@@ -148,15 +120,16 @@ int main(int argc, char *argv[]) {
     int *parallelStateBottom = malloc(NCOLS * sizeof(*parallelStateBottom));
 
     int totalAlive;
+    int nextState;
+    int nAlive;
+
     for (int iteration = 0; iteration < NITERATIONS; iteration++){ 
         // Since receive states uses a blocking Recv, no need to wait for the requests to complete since it's implied.
         // Still kept the signature to return the number of requests made nonetheless.
         //int nRequests = broadcastState(currStatePtr, currStatePtr+ lastRowIndex, currProcess, nProcesses, requests);
-        broadcastState(currStatePtr, currStatePtr+ lastRowIndex, currProcess, nProcesses, requests);
-        receiveStates(parallelStateTop, parallelStateBottom, currProcess, nProcesses);
+        broadcastCurrState(curr, NROWS, NCOLS, currProcess, nProcesses, requests);
+        receiveStates(parallelStateTop, parallelStateBottom, NCOLS, currProcess, nProcesses);
 
-        int nextState;
-        int nAlive;
         totalAlive = 0;
 
         for (int cell = 0; cell < localBufferSize; cell++) {
