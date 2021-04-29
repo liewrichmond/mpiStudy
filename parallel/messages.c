@@ -24,16 +24,18 @@ void receiveInitialState(int *buffer, int nRows, int nCols)
 // Initializes the state of the 'board' in the root process, and distributes this to all other processes.
 void initializeState(int* localState, int nRows, int nCols, int currProcess, int nProcesses)
 {
+    int nRowsLocal = nRows/nProcesses;
+
     if(currProcess == ROOTPROCESS) {
         int *buffer = malloc(nRows* nCols * sizeof(*buffer));
         
         initBoard(buffer, nRows, nCols);
-        broadcastInitialState(buffer, localState, nRows, nCols, nProcesses);
+        broadcastInitialState(buffer, localState, nRowsLocal, nCols, nProcesses);
         printState(buffer, nRows, nCols);
 
         free(buffer);
     }else {
-        receiveInitialState(localState, nRows, nCols);
+        receiveInitialState(localState, nRowsLocal, nCols);
     }
 }
 

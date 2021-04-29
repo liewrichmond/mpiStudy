@@ -6,33 +6,10 @@
 #include "mpi.h"
 #include "time.h"
 
-#define NROWS 1000 
-#define NCOLS 1000
+#define NROWS 4 
+#define NCOLS 4
 #define NITERATIONS 1
 #define ROOTPROCESS 0
-
-
-// Returns the 1D Index of a row-column pair. Only Wraps the Columns such that 0,-1 --> 0,nCol-1
-// This is done in order to denote a "Ghost Cell" from a parallel Process.
-int getCellIndex(int row, int col, int nCols) {
-    //Only wrap the column here. Negative/Overflowed row index denotes "ghost cells"
-    if (col < 0 || col >= nCols) {
-        col = col < 0 ? nCols + col : col - nCols;
-    }
-    
-    int oneDimIndex;
-    oneDimIndex = row < 0 ? -col-1 : (row*nCols) + col;
-    
-    return oneDimIndex;
-}
-
-
-// Shares the current state information with relevant processes. A given process has to share information with its
-// "top" process: rank-1 and "bottom" process: rank+1.
-// Implements wrapping such that negative ranks refer to the max rank, and overflowing ranks are "recounted" from rank 0 
-
-// Receives relevant State information from parallel processes. Mutates parallelTopRow and parallelBottomRow to hold
-// information about the top and bottom rows of "ghost cells".
 
 // Shares the number of cells that are currently alive in a local state, with the root process. 
 int shareNAlive(int nAlive, int currProcess, int nProcesses) {
@@ -77,17 +54,23 @@ void shareNewState(int *localState, int size, int currProcess, int nProcesses) {
 
 // Returns the current state of a given index. Note that negative indexes and "overflowing" indexes are allowed, to an extent
 // Negative indexes refer to the bottom-most row the the preceding process; Overflowing indexes refer to the top-most row of the suceeding process.
-int getCurrState(int index, int localBufferSize, int *localState, int *parallelStateTop, int *parallelStateBottom){
+int getCurrState(int row, int col, int nRows, int nCols, int **localState, int *parallelStateTop, int *parallelStateBot){
     int state;
-    if(index < 0) {
-        state = parallelStateTop[-(index+1)];
+
+    if(col < 0 || col > nCols) {
+        col = col < 0 ? nCols - 1 : col - nCols;
     }
-    else if (index >= localBufferSize) {
-        state = parallelStateBottom[index-localBufferSize];
+
+    if(row < 0) {
+        state = parallelStateTop[col];
+    }
+    else if (row >= nRows) {
+        state = parallelStateBot[col];
     }
     else {
-        state = localState[index];
+        state = localState[row][col];
     }
+
     return state;
 }
 
@@ -110,47 +93,50 @@ int main(int argc, char *argv[]) {
     int **next = malloc(nRowsLocal * sizeof(*next));
 
     for (int row = 0; row < nRowsLocal; row++) {
-        *curr = currStateBuffer + (row * NCOLS);
+        curr[row] = currStateBuffer + (row * NCOLS);
+        next[row] = newStateBuffer + (row * NCOLS);
     }
     
-    initializeState(curr, nRowsLocal, NCOLS, currProcess, nProcesses);
-    
-    int neighbors[8];
+    initializeState(*curr, NROWS, NCOLS, currProcess, nProcesses);
+
+    struct coord **neighbors = malloc(8 * sizeof(*neighbors));
+    for (int i = 0; i < 8; i++) {
+        neighbors[i] = malloc(sizeof(**neighbors));
+    }
+
     int *parallelStateTop = malloc(NCOLS * sizeof(*parallelStateTop));
-    int *parallelStateBottom = malloc(NCOLS * sizeof(*parallelStateBottom));
+    int *parallelStateBot = malloc(NCOLS * sizeof(*parallelStateBot));
 
     int totalAlive;
     int nextState;
+    int neighborState;
+    struct coord *neighbor;
     int nAlive;
 
     for (int iteration = 0; iteration < NITERATIONS; iteration++){ 
-        // Since receive states uses a blocking Recv, no need to wait for the requests to complete since it's implied.
-        // Still kept the signature to return the number of requests made nonetheless.
-        //int nRequests = broadcastState(currStatePtr, currStatePtr+ lastRowIndex, currProcess, nProcesses, requests);
-        broadcastCurrState(curr, NROWS, NCOLS, currProcess, nProcesses, requests);
-        recvCurrState(parallelStateTop, parallelStateBottom, NCOLS, currProcess, nProcesses);
-
+        broadcastCurrState(*curr, nRowsLocal, NCOLS, currProcess, nProcesses, requests);
+        recvCurrState(parallelStateTop, parallelStateBot, NCOLS, currProcess, nProcesses);
         totalAlive = 0;
-        for (int cell = 0; cell < localBufferSize; cell++) {
-            nAlive = 0;
-            getNeighbors(cell, nRowsLocal, NCOLS, neighbors);
-            for (int neighbor = 0; neighbor < 8; neighbor++) {
-                int neighborIndex = neighbors[neighbor];
-                if (getCurrState(neighborIndex, localBufferSize, currStatePtr, parallelStateTop, parallelStateBottom)) {
-                    nAlive++;
-                }
-            }
-            nextState = getNextState(currStatePtr[cell], nAlive);
-            if(nextState) {
-                totalAlive += 1;
-            }
-            newStatePtr[cell] = nextState;
-        }
 
-        swap(&currStatePtr, &newStatePtr);
+        for (int row = 0; row < nRowsLocal; row++) {
+            for (int col = 0; col < NCOLS; col++) {
+                nAlive = 0;
+                getNeighbors(row, col, neighbors);
+                for(int i = 0; i < 8; i++) {
+                    neighbor = neighbors[i];
+                    neighborState = getCurrState(neighbor->row, neighbor->col, nRowsLocal, NCOLS, curr, parallelStateTop, parallelStateBot);
+                    if(neighborState) {
+                        nAlive++;
+                    }
+                }
+                nextState = getNextState(curr[row][col], nAlive);
+                next[row][col] = nextState;
+            }
+        }
+        swap(curr, next);
     }
     
-    shareNAlive(totalAlive, currProcess, nProcesses);
+    //shareNAlive(totalAlive, currProcess, nProcesses);
     //shareNewState(currStatePtr, localBufferSize, currProcess, nProcesses);
 
     MPI_Finalize();
