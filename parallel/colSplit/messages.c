@@ -46,21 +46,22 @@ void recvInitialState(int *localState, int nRowsGlobal, int nColsGlobal, int nPr
 
 int initializeBoard(int *localState, int nRowsGlobal, int nColsGlobal, int currProcess, int nProcesses)
 {
+    int *globalState;
+
     if(currProcess == 0) {
-        int *globalState = calloc(nRowsGlobal * nColsGlobal, sizeof(*globalState));
+        globalState = calloc(nRowsGlobal * nColsGlobal, sizeof(*globalState));
 
         initBoard(globalState, nRowsGlobal, nColsGlobal);
     
         printState(globalState, nRowsGlobal, nColsGlobal);
 
         sendInitialState(globalState, nRowsGlobal, nColsGlobal, nProcesses);
-
-        recvInitialState(localState, nRowsGlobal, nColsGlobal, nProcesses);
-        
-        free(globalState);
     }
-    else {
-        recvInitialState(localState, nRowsGlobal, nColsGlobal, nProcesses);
+
+    recvInitialState(localState, nRowsGlobal, nColsGlobal, nProcesses);
+
+    if(currProcess == 0) {
+        free(globalState);
     }
 
     return 0;

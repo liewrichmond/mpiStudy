@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include "mpi.h"
 #include "messages.h"
+#include "../utils.h"
 #include "col_utils.h"
 
 int currProcess;
@@ -120,6 +121,65 @@ START_TEST(testInitializeBoard)
     }
 }
 
+START_TEST(testGetCurrState) {
+    setup();
+
+    int nRows = 6;
+    int nCols = 6;
+    int nColsLocal = nCols / nProcesses;
+    
+    int *localState = initLocalBuffer(nRows, nCols, nProcesses);
+    int **curr = init2DArray(localState, nRows, nCols, nProcesses);
+    
+    for(int i = 0; i < nRows; i++) {
+        for(int j = 0; j < nColsLocal; j++) {
+            curr[i][j] = (currProcess * nColsLocal) + (i * nCols) + j;
+        }
+    }
+
+    MPI_Datatype ghostCols_t = commitGhostCols(nRows, nColsLocal);
+    sendGhostCells(*curr, nCols, currProcess, nProcesses, ghostCols_t);
+    recvGhostCells(*curr, nCols, currProcess, nProcesses, ghostCols_t);
+   
+    int expected;
+    int currState;
+    if(currProcess == 0) {
+        expected = 35;
+    }
+    else {
+        expected = 32;
+    }
+    currState = getCurrState(-1, -1, nRows, nColsLocal, curr);
+    ck_assert_int_eq(currState, expected);
+
+    if(currProcess == 0) {
+        expected = 11;
+    }
+    else {
+        expected = 8;
+    }
+    currState = getCurrState(1, -1, nRows, nColsLocal, curr);
+    ck_assert_int_eq(currState, expected);
+
+    if(currProcess == 0) {
+        expected = 9;
+    }
+    else {
+        expected = 6;
+    }
+    currState = getCurrState(1, 3, nRows, nColsLocal, curr);
+    ck_assert_int_eq(currState, expected);
+    
+    if(currProcess == 0) {
+        expected = 33;
+    }
+    else {
+        expected = 30;
+    }
+    currState = getCurrState(-1, 3, nRows, nColsLocal, curr);
+    ck_assert_int_eq(currState, expected);
+}
+
 Suite *makeSuite() {
     Suite *s = suite_create("MPI Test Suite");
     TCase *mpiTests = tcase_create("MPI Related Tests");
@@ -128,6 +188,7 @@ Suite *makeSuite() {
     tcase_add_test(mpiTests, testInitialState);
     tcase_add_test(mpiTests, testGhostCells);
     tcase_add_test(mpiTests, testInitializeBoard);
+    tcase_add_test(mpiTests, testGetCurrState);
     suite_add_tcase(s, mpiTests);
 
     return s;
