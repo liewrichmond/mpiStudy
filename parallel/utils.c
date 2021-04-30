@@ -57,3 +57,23 @@ void getNeighbors(int currRow, int currCol, struct coord **buffer)
         }
     }
 }
+
+struct coord **initNeighbors()
+{
+    int nNeighbors = 8;
+    struct coord **neighbors = calloc(nNeighbors, sizeof(*neighbors));
+    for(int i = 0; i < nNeighbors; i++) {
+        neighbors[i] = calloc(1, sizeof(**neighbors));
+    }
+
+    return neighbors;
+}
+
+void freeNeighbors(struct coord **neighbors)
+{
+    int nNeighbors = 8;
+    for(int i = 0; i < nNeighbors; i++ ) {
+        free(neighbors[i]);
+    }
+    free(neighbors);
+}

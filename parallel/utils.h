@@ -15,3 +15,7 @@ void printState(int *buffer, int nRows, int nCols);
 int getNextState(int currState, int nAlive);
 
 void getNeighbors(int currRow, int currCol, struct coord **buffer);
+
+void freeNeighbors(struct coord **neighbors);
+
+struct coord **initNeighbors();
