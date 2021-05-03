@@ -1,6 +1,6 @@
 #include <stdlib.h>
 #include <stdio.h>
-#include "../utils.h"
+#include "../utils/utils.h"
 #include "col_utils.h"
 
 void swap_col(int **curr, int **next, int nRows)

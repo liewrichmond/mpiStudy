@@ -1,14 +1,14 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <string.h>
-#include "../utils.h"
+#include "../utils/utils.h"
 #include "messages.h"
 #include "mpi.h"
 #include "time.h"
 
-#define NROWS 4 
-#define NCOLS 4
-#define NITERATIONS 1
+#define NROWS 6 
+#define NCOLS 6
+#define NITERATIONS 2
 #define ROOTPROCESS 0
 
 // Shares the number of cells that are currently alive in a local state, with the root process. 
@@ -116,6 +116,7 @@ int main(int argc, char *argv[]) {
     for (int iteration = 0; iteration < NITERATIONS; iteration++){ 
         broadcastCurrState(*curr, nRowsLocal, NCOLS, currProcess, nProcesses, requests);
         recvCurrState(parallelStateTop, parallelStateBot, NCOLS, currProcess, nProcesses);
+
         totalAlive = 0;
 
         for (int row = 0; row < nRowsLocal; row++) {
@@ -130,12 +131,21 @@ int main(int argc, char *argv[]) {
                     }
                 }
                 nextState = getNextState(curr[row][col], nAlive);
+                if(nextState) {
+                    totalAlive++;
+                }
                 next[row][col] = nextState;
             }
         }
         swap(curr, next);
     }
     
+    int finalAlive;
+    MPI_Reduce(&totalAlive, &finalAlive, 1, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
+
+    if(currProcess == ROOTPROCESS) {
+        printf("Final Alive: %d\n", finalAlive);
+    }
     //shareNAlive(totalAlive, currProcess, nProcesses);
     //shareNewState(currStatePtr, localBufferSize, currProcess, nProcesses);
 

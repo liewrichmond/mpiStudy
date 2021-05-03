@@ -9,12 +9,19 @@ void swap(int **curr, int **next)
     *next = temp;
 }
 
-void initBoard(int *buffer, int nRows, int nCols)
+int initBoard(int *buffer, int nRows, int nCols)
 {
     srand(time(NULL));
+    int nAlive = 0;
+
     for(int i = 0; i < nRows*nCols; i++) {
         buffer[i] = rand()%2;
+        if(buffer[i]) {
+            nAlive++;
+        }
     }
+
+    return nAlive;
 }
 
 void printState(int *buffer, int nRows, int nCols)

@@ -3,7 +3,7 @@
 #include <stdio.h>
 #include <string.h>
 #include "messages.h"
-#include "../utils.h"
+#include "../utils/utils.h"
 
 void broadcastInitialState(int *globalState, int *localState, int nRows, int nCols, int nProcesses)
 {
@@ -27,11 +27,14 @@ void initializeState(int* localState, int nRows, int nCols, int currProcess, int
     int nRowsLocal = nRows/nProcesses;
 
     if(currProcess == ROOTPROCESS) {
+        int nAlive;
         int *buffer = malloc(nRows* nCols * sizeof(*buffer));
         
-        initBoard(buffer, nRows, nCols);
+        nAlive = initBoard(buffer, nRows, nCols);
+
+        printf("Initial Alive: %d\n", nAlive);
+
         broadcastInitialState(buffer, localState, nRowsLocal, nCols, nProcesses);
-        printState(buffer, nRows, nCols);
 
         free(buffer);
     }else {

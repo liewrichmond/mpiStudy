@@ -2,9 +2,9 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include "mpi.h"
-#include "messages.h"
-#include "../utils.h"
-#include "col_utils.h"
+#include "../src/parallel/colSplit/messages.h"
+#include "../src/parallel/utils/utils.h"
+#include "../src/parallel/colSplit/col_utils.h"
 
 int currProcess;
 int nProcesses;

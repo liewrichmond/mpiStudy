@@ -1,6 +1,7 @@
+#include <stdio.h>
 #include <mpi.h>
 #include "messages.h"
-#include "../utils.h"
+#include "../utils/utils.h"
 
 MPI_Datatype commitGhostCols(int nRows, int nColsLocal)
 {
@@ -49,11 +50,15 @@ int initializeBoard(int *localState, int nRowsGlobal, int nColsGlobal, int currP
     int *globalState;
 
     if(currProcess == 0) {
+        int nAlive;
+
         globalState = calloc(nRowsGlobal * nColsGlobal, sizeof(*globalState));
 
-        initBoard(globalState, nRowsGlobal, nColsGlobal);
-    
-        printState(globalState, nRowsGlobal, nColsGlobal);
+        nAlive = initBoard(globalState, nRowsGlobal, nColsGlobal);
+
+        printf("Initial Alive: %d\n", nAlive);
+
+        //printState(globalState, nRowsGlobal, nColsGlobal);
 
         sendInitialState(globalState, nRowsGlobal, nColsGlobal, nProcesses);
     }

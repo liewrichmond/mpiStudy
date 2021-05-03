@@ -1,7 +1,7 @@
 #include <stdlib.h>
 #include <mpi.h>
 #include <check.h>
-#include "messages.h"
+#include "../src/parallel/rowSplit/messages.h"
 
 int nProcesses;
 int currProcess;

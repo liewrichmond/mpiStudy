@@ -8,7 +8,7 @@ struct coord {
 
 void swap(int **curr, int **next);
 
-void initBoard(int *buffer, int nRows, int nCols);
+int initBoard(int *buffer, int nRows, int nCols);
  
 void printState(int *buffer, int nRows, int nCols);
 

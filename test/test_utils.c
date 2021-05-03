@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <check.h>
-#include "utils.h"
+#include "../src/parallel/utils/utils.h"
 
 START_TEST(test_test)
 {

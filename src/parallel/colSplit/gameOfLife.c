@@ -1,13 +1,13 @@
 #include <stdlib.h>
 #include <mpi.h>
 #include <stdio.h>
-#include "../utils.h"
+#include "../utils/utils.h"
 #include "col_utils.h"
 #include "messages.h"
 
 #define NROWS 6
 #define NCOLS 6
-#define ITERATIONS 1
+#define ITERATIONS 2
 
 int main() {
     int currProcess, nProcesses;
@@ -28,6 +28,7 @@ int main() {
     struct coord **neighbors = initNeighbors();
     struct coord *neighbor;
     int nAlive;
+    int totalAlive;
 
     MPI_Datatype ghostCols_t = commitGhostCols(NROWS, nColsLocal);
 
@@ -35,7 +36,7 @@ int main() {
     {
         sendGhostCells(*curr, NCOLS, currProcess, nProcesses, ghostCols_t);
         recvGhostCells(*curr, NCOLS, currProcess, nProcesses, ghostCols_t);
-
+        totalAlive = 0;
         for(int row = 0; row < NROWS; row++)
         {
             for(int col = 0; col < nColsLocal; col++)
@@ -48,20 +49,22 @@ int main() {
                     if(isAlive(neighbor, NROWS, nColsLocal, curr)) {
                         nAlive++;
                     }
-                    next[row][col] = getNextState(curr[row][col], nAlive);
+                }
+                next[row][col] = getNextState(curr[row][col], nAlive);
+                if(next[row][col]) {
+                    totalAlive++;
                 }
             }
         }
 
         swap_col(curr, next, NROWS);
-    } 
+    }
 
-    printf("From Process %d\n", currProcess);
-    for(int i = 0; i < NROWS; i++) {
-        for(int j = 0; j < nColsLocal; j++) {
-            printf("%d,",curr[i][j]);
-        }
-        printf("\n");
+    int finalAlive;
+    MPI_Reduce(&totalAlive, &finalAlive, 1, MPI_INT, MPI_SUM, 0, MPI_COMM_WORLD);
+
+    if(currProcess == ROOTPROCESS) {
+        printf("Final Alive: %d\n", finalAlive);
     }
 
     free(currStateBuffer);
