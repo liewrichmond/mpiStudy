@@ -26,6 +26,7 @@ END_TEST
 
 START_TEST(test_mpi_init)
 {
+    setup();
     if(currProcess == ROOTPROCESS) {
         ck_assert_int_eq(currProcess,0);
         int recvData;
@@ -44,6 +45,7 @@ END_TEST
 
 START_TEST(test_mpi_initial_state)
 {
+    setup();
     int nRows = 4;
     int nCols = 4;
     int nRowsLocal = nRows/nProcesses;
@@ -74,6 +76,7 @@ END_TEST
 
 START_TEST(testMpiBroadcastCurrState)
 {
+    setup();
     int nRows = 4;
     int nCols = 4;
     int nRowsLocal = nRows/nProcesses;
@@ -116,6 +119,7 @@ END_TEST
 
 START_TEST(testParaRanks)
 {
+    setup();
     int topRank = getParallelRankTop(currProcess, nProcesses);
     int botRank = getParallelRankBot(currProcess, nProcesses);
 
@@ -146,12 +150,9 @@ Suite *makeSuite() {
 }
 
 int main() {
-    setup();
 
     Suite *s = makeSuite();
     SRunner *sr = srunner_create(s);
 
     srunner_run_all(sr, CK_NORMAL);
-
-    teardown();
 }
